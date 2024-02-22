@@ -1,0 +1,455 @@
+---
+title: "ST340 Assignment 3"
+author: "Xintian Han 1909780, Runze Wang 1907544, Jingyuan Chen 2029628"
+date: "14/03/2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Q1 Gradient descent
+There is a function that does gradient descent with a fixed number of iterations to find local minimum:
+```{r}
+gradient.descent <- function(f, gradf, x0, iterations=1000, eta=0.2) { 
+  x<-x0
+for (i in 1:iterations) { 
+  cat(i,"/",iterations,": ",x," ",f(x),"\n") 
+  x<-x-eta*gradf(x)
+}
+x 
+}
+```
+Example:
+```{r}
+ f <-function(x) { sum(x^2) } 
+gradf<-function(x) { 2*x } 
+gradient.descent(f,gradf,c(10,20),10,0.2)
+```
+
+(a) Write a short function that uses gradient.descent to find a local maximum.
+
+Gradient descent is opposite to gradient ascent as one is finding minimum and another is finding maximum, we could adjust the function by taking eta to be -eta, so if -eta=0.2, then we will have x+0.2*gradf(), we have obtained an increasing function and the direction is increasing most rapidly, which is the same as gradient ascent.
+
+```{r}
+gradient.ascent <- function(f, df, x0, iterations=1000, eta=0.2) {
+  # change eta to -eta to find the direction increasing the most
+  gradient.descent(f,df,x0,iterations,-eta)
+}
+
+f <-function(x) { (1+x^2)^(-1) }
+gradf<-function(x) { -2*x*(1+x^2)^(-2) } 
+gradient.ascent(f,gradf,3,40,0.5)
+```
+The above code gives the final output of x=0 and f(x)=1. Which indicates that the function $\frac{1}{1+x^2}$ achieves its maximum that f(x)=1 when x=0.
+
+
+(b) consider:
+```{r}
+f <- function(x) (x[1]-1)^2 + 100*(x[1]^2-x[2])^2
+```
+
+i)proof f has a unique minimum
+
+$$
+   f:{\mathbb{R}^2}{\rightarrow}{\mathbb{R}}
+$$
+
+
+the function f has the form
+$$
+  f(x_1,x_2)=(x_1-1)^2+100(x_1^2-x_2)^2
+$$
+The function attains its minimum value when 
+$$
+  f(x_1,x_2)=0
+$$
+ we know the property of square, that is 
+$$
+ (x_1-1)^2{\geq}0 
+$$
+and 
+
+$$
+(x_1^2-x_2)^2{\geq}0 
+$$
+Theses two squares are minimised when both of them has value=0
+Then we can get
+$$
+(x_1-1)=0 
+$$
+and 
+$$
+(x_1^2-x_2)=0 
+$$
+Solving these equations we get $x_1=1$ and because $x_1^2=1$ we have $x_2=1$.
+Because we only obtain one unique value for $x_1$ and $x_2$, so the function $f(x_1,x_2)$ has a unique minimum value  $f(x_1,x_2)=0$ when $x_1=1$ and $x_2=1$
+
+
+ii)
+we use the partial derivative to get 
+$$
+  {\nabla} f={\nabla} f(x_1,x_2)=	({\frac{{\partial} f}{{\partial} x_1}},{\frac{{\partial} f}{{\partial} x_2}})=(400x_1(x_1^2-x_2)+2(x_1-1),200(x_2-x_1^2))
+$$
+We create the gradf function to output the partial derivative of $f(x_1,x_2)$ in the vector form with the input of $x=(x_1,x_2)$
+```{r}
+gradf<- function(x) {
+  c(400*x[1]^3-400*x[1]*x[2]+2*x[1]-2, 200*x[2]-200*x[1]^2)
+  }
+```
+
+We can use examples to check it actually works
+```{r}
+gradf(c(1,1))
+gradf(c(2,2))
+```
+When $(x_1,x_2)=(0,0)$, we get the unique minimum value of the function $f=0$, this means the partial derivative in the vector form should also be 0 in each part. Similar situation apply for $(x_1,x_2)=(2,2)$, put these two value into the part1 and part2 formula we would get the same answer.
+
+iii)
+Firstly, we need to find the range of eta that could give us a value for the function f which is close to 0 in order to find the minimum value and get value of $x_1$ and $x_2$
+
+```{r}
+gradient_descent2 <- function(f, gradf, x0, iterations) {
+   # create a bunch of values of eta
+  eta <- c(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.5, 1) 
+  result <- list() 
+  for (k in 1:length(eta)) {
+    x <- x0 #initial value of x
+    for (i in 1:iterations) {
+      x <- x - eta[k] * gradf(x) #updated value of x with iterations
+    }
+    # create a data frame to store the results
+    value <- data.frame(
+      eta = eta[k],
+      iterations = iterations,
+      x = x,
+      fx=f(x)
+    )
+    
+    result[[k]] <- value
+  }
+  
+  return(result)
+}
+
+f <- function(x) {(x[1]-1)^2 + 100*(x[1]^2-x[2])^2}
+gradf <- function(x) {c(400*x[1]^3-400*x[1]*x[2]+2*x[1]-2, 200*x[2]-200*x[1]^2)}
+gradient_descent2(f,gradf,c(3,4),iterations = 200)
+
+```
+The first row is the data for $x_1$ and the second row is the data for $x_2$.
+From the above we know that values of eta=C(0.0001,0.00001,0.000001), we could get the value for x and f_x, other values of eta bigger than 0.001 is not working because we have NaN.Then we could find values of $x_1$ and $x_2$ by finding the minimum value of function equals to 0 for each different values of eta. For $x_1$ and $x_2$ both equals to 0.0001, we have fx=1.08, for $x_1$ and $x_2$ both equals to 0.001, we have fx=NaN. So the minimum value must exist within this range.Hence, we need to choose the value of eta between 0.001-0.0001. 
+
+Then we can apply the function to find the exact value of eta :
+```{r}
+gradient_descent3 <- function(f, gradf, x0, iterations) {
+   # create a bunch of values of eta using sequence function
+  eta_1<- seq(from=0.0001, to=0.001, by=0.00001)
+  result <- list() 
+  for (eta in eta_1) {
+    x <- x0
+    for (i in 1:iterations) {
+      x <- x - eta * gradf(x)
+    }
+    # create a data frame to store the results
+    value <- data.frame(
+      eta = eta,
+      iterations = iterations,
+      x = x,
+      fx=f(x)
+    )
+    #add the data frame
+    result[[length(result) + 1]] <- value
+  }
+  
+  return(result)
+}
+
+f <- function(x) {(x[1]-1)^2 + 100*(x[1]^2-x[2])^2}
+gradf <- function(x) {c(400*x[1]^3-400*x[1]*x[2]+2*x[1]-2, 200*x[2]-200*x[1]^2)}
+gradient_descent3(f, gradf, c(3, 4), iterations = 100000)
+```
+From the above we can see that when the minimum of function approaches 0, we have both $x_1$ and $x_2$ with value 1 if we have 100000 iterations and we also obtain the  maximum value of eta=0.00098.
+
+
+(c)
+we know that the gradient decent momentum has an extra component in the function that is alpha, then we could construct
+```{r}
+gradient_descent.momentum <- function(f, gradf, x0, iterations, eta, alpha) {
+  result <- list() 
+  for(p in 1:length(alpha)) {
+    x1 <- x0
+     # update x0 without momentum
+    x0 <- x1 - eta * gradf(x1) 
+    # we have iterations-1 remaining
+    for(i in 1:(iterations-1)) {
+      #with momentum
+      x2 <- x1 - eta * gradf(x1) + alpha[p] * (x1 - x0) 
+      x0 <- x1
+      x1 <- x2
+    }
+    value <- data.frame(
+      eta = eta,
+      iterations = iterations,
+      x = x1,
+      alpha = alpha[p],
+      fx = f(x1)
+    )
+    result[[p]] <- value
+  }
+  return(result) # return the whole list of values
+}
+
+f <- function(x) {(x[1]-1)^2 + 100*(x[1]^2-x[2])^2}
+gradf <- function(x) {c(400*x[1]^3-400*x[1]*x[2]+2*x[1]-2, 200*x[2]-200*x[1]^2)}
+gradient_descent.momentum(f, gradf, c(3, 4), iterations = 500,eta = 0.00098,
+  alpha =c(0.000001,0.00001, 0.0001, 0.001, 0.01 , 0.1 ,0.5 ,1 ) )
+```
+From the above data frame we get that when eta achieved the max value of 0.00098, we need to find the value of alpha that could lead to the minimum value of the function. That is when alpha has value between 0.001 and 1, we have fx less than 1.
+Then we look closer in the region to find the most accurate value of alpha by taking alpha from the sequence :
+
+```{r}
+gradient_descent.momentum2<- function(f, gradf, x0, iterations, eta, alpha) {
+  alpha_1<- seq(from=0.001, to=1, by=0.01)
+  result <- list() 
+  for( alpha in alpha_1) {
+    x1 <- x0
+    # update x0 without momentum
+    x0 <- x1 - eta * gradf(x1) 
+    # have iterations-1 remaining
+    for(i in 1:(iterations-1)) { 
+      x2 <- x1 - eta * gradf(x1) + alpha* (x1 - x0) 
+      x0 <- x1
+      x1 <- x2
+      }
+    value <- data.frame(
+      eta = eta,
+      iterations = iterations,
+      x = x1,
+      alpha = alpha,
+      fx = f(x1)
+    )
+    #add the new term of data frame
+    result[[length(result) + 1]] <- value
+  }
+  return(result) # return the whole list of values
+}
+
+f <- function(x) {(x[1]-1)^2 + 100*(x[1]^2-x[2])^2}
+gradf <- function(x) {c(400*x[1]^3-400*x[1]*x[2]+2*x[1]-2, 200*x[2]-200*x[1]^2)}
+gradient_descent.momentum2(f, gradf, c(3, 4), iterations = 100,eta = 0.00098,alpha )
+```
+From the above we can see when we have the iterations=100, we could get the minimum value of function close to 0 when we have $x_1$ and $x_2$ both equals to 1 and the alpha is 0.991 nearly equals to 1.
+
+To summarise, we can see through the comparison of gradient decent with momentum and gradient decent which indicates gradient decent with momentum runs more quickly than that without momentum because we have less iterations but still get the same value. 
+
+# Q2 Support vector machines
+
+Run the following code to load the tiny MNIST dataset:
+```{r, eval=FALSE}
+library(knitr)
+
+library(grid)
+grid.raster(array(aperm(array(train.X[1:50,],c(5,10,28,28)),c(4,1,3,2)),c(140,280)),
+              interpolate=FALSE)
+```
+
+(a) Use three-fold cross validation on the training set to compare SVMs with linear kernels, polynomial kernels and RBF kernels, i.e.
+```{r,warning=FALSE}
+library(e1071)
+load("~/Downloads/mnist.tiny.rdata")
+train.X=train.X/255
+test.X=test.X/255
+svm(train.X,train.labels,type="C-classification",kernel="linear",cross=3)$tot.accuracy
+svm(train.X,train.labels,type="C-classification",kernel="poly",
+degree=2,coef=1,cross=3)$tot.accuracy
+```
+
+Linear kernels: We create one function $lin.acc$ It can return the accuracy of linear model , max accuracy, and its relevant cost value with different input a list of $cost$ and $train.X$. Here we set $cost=c(0.001,0.01,0.1,0.5,1,2,5,10)$ and print out the list of results.
+```{r,warning=FALSE}
+lin.acc<-function(cost,train.X){
+set.seed(123)
+linear.acc<-rep(0,length(cost))
+  for(i in 1:length(cost)){
+  linear.acc[i]<-svm(train.X,train.labels,type="C-classification",kernel="linear",
+                     cross=3,cost=cost[i])$tot.accuracy
+  }
+a<-linear.acc
+## Get the max accuracy
+max<-max(a)
+## Locate the position of the max accuracy
+p<-which(a==max,arr.ind = TRUE)
+## Print out the list of results
+list(a,paste("max accuracy is",max,", cost value is",cost[p]))
+}
+
+## Give the range of cost
+cost = c(0.001,0.01,0.1,0.5,1,2,5,10)
+## Give a random example here
+lin.acc(cost,train.X)
+```
+From the result of the linear kernel SVM, it shows that we can get better accuracy with the values of $cost{\geq}=0.1$.
+Here the maximum accuracy is 86.6, which can be obtained at the $cost=0.1$.
+
+
+Polynomial kernels:
+Similarly, for the polynomial kernel, with input of some values of $cost$, $gamma$ and $train.X$, we can get the results of all accuracies, the max accuracy, and the its $cost$ and $gamma$
+```{r,warning=FALSE}
+set.seed(123)
+
+## Three input in this function
+
+poly.acc<-function(cost,gamma,train.X){
+
+## Initialize the grid matrix 
+acc.grid<-matrix(nrow=length(gamma),ncol=length(cost),
+                 dimnames=list(gamma,cost))
+
+  for(i in 1:length(cost)){
+    for (j in 1:length(gamma)) {
+     
+       s<-svm(train.X,train.labels,type="C-classification",kernel="poly",degree=2,coef=1,
+              cross=3,cost = cost[i],gamma = gamma[j])
+       ##Define the grid with the accuracy entries
+        acc.grid[j,i]<-s$tot.accuracy
+    }
+  }
+   a<-acc.grid
+   ## Same as the linear kernel step
+   max<-max(a)
+   p<-which(a==max,arr.ind = TRUE)
+   g<-gamma[p[,1]]
+   c<-cost[p[,2]]
+list(a,paste("max accuracy is",max,", gamma is",g,", and cost is",c))
+}
+
+## Give the range of cost and gamma
+c=c(0.001,0.01,0.1,0.5,1,2,5,10)
+g=c(0.001,0.01,0.1,0.5,1,2,5,10)
+## Give a random example here
+poly.acc(c,g,train.X)
+```
+From the result of the polynomial kernels,it shows that we can get better accuracy with the values of $\gamma{\geq}0.1$.
+Here the maximum accuracy is 90.1, which can be obtained at the $cost=0.1$ and $\gamma=0.1$.
+
+RBF kernel:
+```{r,,warning=FALSE}
+set.seed(123)
+rbf.acc<-function(cost,gamma,train.X){
+## Same as the polynomial kernel step
+n<-length(cost)
+m<-length(gamma)
+acc.grid<-matrix(nrow=length(gamma),ncol=length(cost),
+                 dimnames=list(gamma,cost))
+
+  for(i in 1:n){
+    for (j in 1:m) {
+     ## we only need to change the part of " kernel ='radial' "
+       s<-svm(train.X,train.labels,type="C-classification",kernel="radial",degree=2,coef=1,
+              cross=3,cost = cost[i],gamma = gamma[j])
+        acc.grid[j,i]<-s$tot.accuracy
+    }
+  }
+   a<-acc.grid
+   max<-max(a)
+   p<-which(a==max,arr.ind = TRUE)
+   g<-gamma[p[,1]]
+   c<-cost[p[,2]]
+list(a,paste("max accuracy is",max,", gamma is",g,", and cost is",c))
+}
+
+c=c(0.001,0.01,0.1,0.5,1,2,5,10)
+g=c(0.001,0.01,0.1,0.5,1,2,5,10)
+## Give a random example here
+rbf.acc(c,g,train.X)
+
+```
+From the result of the RBF kernels,it shows that we can get better accuracy with the values of $\gamma{\geq}0.01$.
+Here the maximum accuracy is 90.4, which can be obtained at the $cost=10$ and $\gamma$=0.01
+
+conclusion:
+The best accuracy is RBF kernels (90.4), then Polynomial kernels (90.1), and linear kernels (86.6) respectively. RBF kernels need relatively small range of values of $\gamma$ and $cost$. Linear kernels can get better accuracy when the $cost{\geq}0.1$.
+
+Warning explanation: 
+Warning shows that $Variable(s) : \ 'X1' \ and \ 'X2' \  and \ ... \ and \ 'Xi' constant. Cannot\ Scale \  data$.
+This happens when svm functions have a lot of zero variables and the warning just tells us we should realize the marix is very sparse.
+
+
+(b) We can use same steps as three svm functions in the first part, just changing the input into pairs of (lc,lg) entries ,x and y. The output will return four parameters: The accuracy grid (matrix), the best cross-validation error (max accuracy), the corresponding gamma and cost.
+```{r,warning=FALSE}
+set.seed(123)
+rbf.search<-function(lc,lg,x,y){
+
+## Initialize the grid matrix
+grid<-matrix(nrow=length(lg),ncol=length(lc), dimnames=list(lg,lc))
+
+for(i in 1:length(lg)){
+  for(j in 1:length(lc)){
+    
+    ## The pair of lists attempts cross-validation with parameters cost =exp(lc) and 
+    ## gamma=exp(lg)
+    s<-svm(x,y,type="C-classification",kernel="radial",degree=2,coef=1,cross=3,
+           gamma =exp(lg[i]),cost =exp(lc[j]))
+    
+   ## Same as before, define the grid matrix
+     grid[i,j]<-s$tot.accuracy
+    
+  }
+}
+   ## looking for the best (max) accuracy of all elements
+   a<-grid
+   max<-max(a)
+   p1<-which(a==max,arr.ind = TRUE)[1]
+   p2<-which(a==max,arr.ind = TRUE)[2]
+   
+## Return the best list of all parameters
+list(a,max,lg[p1],lc[p2])
+}
+```
+
+We choose the $log.gamma.range \ (lg) \in [-4,4]$ and $log.C.range \ (lc) \in [-4,4]$ with inputs $train.X$ and $train.lebales$.
+```{r,warning=FALSE}
+set.seed(123)
+k<-rbf.search(c(-4:4),c(-4:4),train.X,train.labels)
+## Print out all accuracy
+k[[1]]
+```
+
+Here we can see a better performance region from matrix $k$ when $gamma \in [-4,-3]$, and $cost \in [0,4]$, and we can run the second round for the $gamma \in [-4,-3]$ and $cost \in [0,4]$ with gaps of 0.25 and 0.5 respectively.
+```{r, warning=FALSE}
+## Choosing the better accuracy from the above results and run the second time
+## New input with the better results
+set.seed(123)
+new.c<- seq(0, 4, 0.5)
+new.g <-seq(-4,-3,0.25)
+
+## Second running and get the final best parameters
+k2 <- rbf.search(new.c, new.g, train.X, train.labels)
+k2[[1]]
+## Print out the best cross-validation error, the corresponding gamma and cost values.
+
+best.cve<-k2[[2]]
+best.g<-k2[[3]]
+best.c<-k2[[4]]
+
+## A list of three best parameters
+list(best.cve, best.g, best.c)
+```
+
+From the results $k2$ of the second round, we can get the best values for $gamma$ and $cost$. By using these best parameters ($gamma$=-4 and $cost$ =3.5) and svm function to get the final best model $best$. And we have the test data $test.X$ and $test.labels$ to test accuracy and it returns the mean accuracy predict values through the final model $best$.
+```{r,warning=FALSE}
+## Confirm the best svm and predict accuracy by using the test.X and test.labels
+best<-svm(train.X,train.labels,type="C-classification",kernel="radial",degree=2,coef=1,
+           cross=3,cost = exp(best.c),gamma = exp(best.g))
+best.acc<-mean(predict(best,test.X)==test.labels)
+best.acc
+```
+We can get the final best accuracy which is around 91% when $c$ and $\gamma$ are not the extreme values from the ranges of $cost$ and $gamma$ ranges and it shows a perfect and ideal result. After two second runs and choosing the better pair of $c$ and $\gamma$ from a range of values, we can get a suitable answer to test a better accuracy.
+
+
+
+
+
+
+
+
